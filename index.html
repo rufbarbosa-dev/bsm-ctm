@@ -499,37 +499,59 @@ function kmlToGeoJSON(str) {
 // ══════════════════════════════════════════════════
 async function ghGet(path) {
   const r = await fetch(`${API_BASE}${path}`, {
-    headers: { Authorization: `token ${ghToken}`, Accept: 'application/vnd.github.v3+json' }
+    headers: { 
+      Authorization: `token ${ghToken}`, 
+      Accept: 'application/vnd.github.v3+json',
+      'X-GitHub-Api-Version': '2022-11-28'
+    }
   });
   if (!r.ok) throw new Error(`GitHub API ${r.status}: ${path}`);
   return r.json();
 }
 
 async function ghPut(path, message, content, sha = null) {
-  const body = { message, content: btoa(unescape(encodeURIComponent(content))), branch: GH_BRANCH };
+  // GitHub API requer base64 sem caracteres especiais
+  const encoded = btoa(unescape(encodeURIComponent(content)));
+  const body = { message, content: encoded, branch: GH_BRANCH };
   if (sha) body.sha = sha;
   const r = await fetch(`${API_BASE}/contents${path}`, {
     method: 'PUT',
-    headers: { Authorization: `token ${ghToken}`, Accept: 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+    headers: { 
+      Authorization: `token ${ghToken}`, 
+      Accept: 'application/vnd.github.v3+json',
+      'Content-Type': 'application/json',
+      'X-GitHub-Api-Version': '2022-11-28'
+    },
     body: JSON.stringify(body)
   });
-  if (!r.ok) { const e = await r.json(); throw new Error(e.message || 'Erro ao salvar'); }
+  if (!r.ok) { 
+    const e = await r.json().catch(() => ({})); 
+    throw new Error(e.message || `Erro ${r.status} ao salvar`); 
+  }
   return r.json();
 }
 
 async function ghDelete(path, message, sha) {
   const r = await fetch(`${API_BASE}/contents${path}`, {
     method: 'DELETE',
-    headers: { Authorization: `token ${ghToken}`, Accept: 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+    headers: { 
+      Authorization: `token ${ghToken}`, 
+      Accept: 'application/vnd.github.v3+json',
+      'Content-Type': 'application/json',
+      'X-GitHub-Api-Version': '2022-11-28'
+    },
     body: JSON.stringify({ message, sha, branch: GH_BRANCH })
   });
-  if (!r.ok) throw new Error('Erro ao excluir arquivo');
+  if (!r.ok) { 
+    const e = await r.json().catch(() => ({})); 
+    throw new Error(e.message || `Erro ${r.status} ao excluir`); 
+  }
 }
 
 async function getFileSha(path) {
   try {
     const data = await ghGet(`/contents${path}`);
-    return data.sha;
+    return data.sha || null;
   } catch { return null; }
 }
 
@@ -543,9 +565,23 @@ async function saveLayersJson() {
 // MAPA
 // ══════════════════════════════════════════════════
 const map = L.map('map', { center:[-9.845,-35.906], zoom:14, zoomControl:true });
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution:'© OpenStreetMap contributors', maxZoom:21
-}).addTo(map);
+
+// tile principal + fallback automático
+const tileLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  maxZoom:21,
+  crossOrigin: true
+});
+
+tileLayer.on('tileerror', function() {
+  // fallback para CartoDB se OSM falhar
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution:'© OpenStreetMap © CARTO',
+    maxZoom:21
+  }).addTo(map);
+});
+
+tileLayer.addTo(map);
 
 function darken(hex) {
   const n = parseInt(hex.replace('#',''),16);
@@ -1068,6 +1104,11 @@ if (ghToken) {
       } else { sessionStorage.removeItem('bsm_token'); ghToken = null; }
     });
 }
+
+// Fix mapa cinza — força redimensionamento após render
+window.addEventListener('load', () => {
+  setTimeout(() => map.invalidateSize(), 300);
+});
 
 loadPublicLayers();
 </script>
