@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CTM — Barra de São Miguel/AL</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:      #f2efe8;
+  --panel:   #ffffff;
+  --header:  #0f2e20;
+  --accent:  #1a5c3a;
+  --gold:    #c9993a;
+  --muted:   #7a7568;
+  --border:  #ddd8cc;
+  --danger:  #c0392b;
+  --lw:      250px;
+  --fw:      380px;
+  --h:       52px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Outfit',sans-serif;background:var(--bg);height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+
+/* HEADER */
+header{height:var(--h);background:var(--header);display:flex;align-items:center;padding:0 18px;gap:14px;flex-shrink:0;z-index:1000;border-bottom:2px solid var(--gold);}
+.logo{display:flex;flex-direction:column;line-height:1.1;}
+.logo-main{font-family:'Lora',serif;font-size:15px;font-weight:600;color:#fff;}
+.logo-sub{font-size:9px;color:rgba(255,255,255,0.45);letter-spacing:1px;text-transform:uppercase;}
+.hdiv{width:1px;height:26px;background:rgba(255,255,255,0.12);}
+.hbadge{background:var(--gold);color:#fff;font-size:10px;font-weight:700;letter-spacing:1.5px;padding:3px 9px;border-radius:2px;text-transform:uppercase;}
+.htitle{font-size:12px;color:rgba(255,255,255,0.4);font-weight:300;}
+.hleg{display:flex;gap:16px;align-items:center;}
+.leg{display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.6);}
+.leg-sq{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
+.hright{margin-left:auto;display:flex;align-items:center;gap:12px;}
+
+/* LOGIN BUTTON */
+#loginBtn{
+  display:flex;align-items:center;gap:6px;
+  background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);
+  color:rgba(255,255,255,0.8);border-radius:5px;
+  font-family:'Outfit',sans-serif;font-size:12px;font-weight:500;
+  padding:6px 12px;cursor:pointer;transition:all 0.2s;
+}
+#loginBtn:hover{background:rgba(255,255,255,0.2);}
+#adminBadge{
+  display:none;align-items:center;gap:8px;
+  background:rgba(201,153,58,0.2);border:1px solid rgba(201,153,58,0.4);
+  border-radius:5px;padding:5px 12px;
+}
+#adminBadge.show{display:flex;}
+.admin-name{font-size:11px;color:var(--gold);font-weight:600;}
+#logoutBtn{font-size:11px;color:rgba(255,255,255,0.4);cursor:pointer;background:none;border:none;font-family:'Outfit',sans-serif;padding:2px 4px;}
+#logoutBtn:hover{color:rgba(255,255,255,0.8);}
+
+/* MAIN */
+.main{display:flex;flex:1;overflow:hidden;position:relative;}
+
+/* LAYERS */
+#layersPanel{width:var(--lw);background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:100;flex-shrink:0;}
+.lp-header{padding:12px 14px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.lp-title{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);}
+.btn-add{display:flex;align-items:center;gap:5px;background:var(--accent);color:#fff;border:none;border-radius:4px;font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;padding:5px 10px;cursor:pointer;transition:background 0.15s;white-space:nowrap;}
+.btn-add:hover{background:#0f3d27;}
+.btn-add:disabled{opacity:0.3;cursor:not-allowed;}
+.layers-list{flex:1;overflow-y:auto;padding:6px 0;}
+.layers-list::-webkit-scrollbar{width:3px;}
+.layers-list::-webkit-scrollbar-thumb{background:var(--border);}
+.layer-item{display:flex;align-items:center;gap:8px;padding:8px 14px;user-select:none;}
+.layer-toggle{width:15px;height:15px;border:2px solid var(--border);border-radius:3px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.15s;}
+.layer-toggle.on{border-color:var(--accent);background:var(--accent);}
+.layer-toggle.on::after{content:'✓';color:#fff;font-size:9px;font-weight:700;}
+.layer-swatch{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.layer-name{font-size:12px;font-weight:500;color:#333;flex:1;line-height:1.3;}
+.layer-count{font-size:10px;color:var(--muted);white-space:nowrap;}
+.layer-actions{display:none;gap:3px;}
+.layer-actions.admin-visible{display:flex;}
+.layer-btn{width:20px;height:20px;background:none;border:none;cursor:pointer;color:#ccc;font-size:13px;border-radius:3px;display:flex;align-items:center;justify-content:center;transition:all 0.15s;flex-shrink:0;padding:0;}
+.layer-btn:hover{color:var(--accent);background:#e8f4ec;}
+.layer-btn.del:hover{color:var(--danger);background:#fdf0ef;}
+.lp-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 16px;text-align:center;gap:10px;color:var(--muted);}
+.lp-empty-icon{font-size:32px;opacity:0.25;}
+.lp-empty-text{font-size:12px;line-height:1.7;font-weight:300;}
+.lp-tip{padding:10px 14px;border-top:1px solid var(--border);font-size:10.5px;color:var(--muted);line-height:1.55;background:#faf9f5;}
+.lp-tip strong{color:var(--accent);}
+
+/* MAP */
+#map{flex:1;z-index:1;}
+.search-wrap{position:absolute;top:12px;left:calc(var(--lw) + 12px);z-index:500;width:280px;}
+.search-box{background:#fff;border:1px solid var(--border);border-radius:6px;box-shadow:0 3px 14px rgba(0,0,0,0.1);display:flex;align-items:center;padding:0 12px;gap:8px;}
+.search-box input{flex:1;border:none;outline:none;padding:10px 0;font-family:'Outfit',sans-serif;font-size:13px;color:#333;background:transparent;}
+.search-box input::placeholder{color:#bbb;}
+#searchClear{cursor:pointer;color:var(--muted);font-size:12px;display:none;}
+#searchClear.show{display:block;}
+.search-results{display:none;background:#fff;border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;box-shadow:0 4px 12px rgba(0,0,0,0.1);max-height:220px;overflow-y:auto;}
+.search-results.show{display:block;}
+.sri{padding:9px 14px;cursor:pointer;font-size:12px;border-bottom:1px solid #f0ece4;transition:background 0.1s;}
+.sri:last-child{border:none;}
+.sri:hover{background:#f8f6f0;}
+.sri-main{font-weight:500;color:#333;}
+.sri-sub{color:var(--muted);font-size:11px;margin-top:1px;}
+.map-counter{position:absolute;bottom:28px;left:calc(var(--lw) + 12px);z-index:500;background:rgba(15,46,32,0.88);color:rgba(255,255,255,0.9);font-size:11px;font-weight:500;padding:5px 12px;border-radius:4px;backdrop-filter:blur(4px);}
+
+/* FICHA */
+#fichaPanel{width:var(--fw);background:var(--panel);border-left:1px solid var(--border);display:flex;flex-direction:column;transform:translateX(100%);transition:transform 0.3s cubic-bezier(0.4,0,0.2,1);z-index:100;overflow:hidden;flex-shrink:0;position:relative;}
+#fichaPanel.open{transform:translateX(0);}
+.ficha-close{position:absolute;top:10px;right:10px;width:28px;height:28px;background:rgba(255,255,255,0.9);border:1px solid var(--border);border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--muted);z-index:10;transition:all 0.2s;}
+.ficha-close:hover{background:var(--header);color:#fff;border-color:var(--header);}
+.ficha-photo{width:100%;height:195px;object-fit:cover;display:block;flex-shrink:0;background:#e8e3d8;}
+.no-photo{width:100%;height:195px;background:linear-gradient(135deg,#e8e3d8,#d8d3c8);display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;gap:6px;color:var(--muted);font-size:12px;}
+.no-photo-icon{font-size:28px;opacity:0.4;}
+.ficha-top{padding:14px 18px 12px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.ftag{display:inline-flex;align-items:center;gap:5px;font-size:9px;font-weight:700;letter-spacing:1.3px;text-transform:uppercase;padding:2px 9px;border-radius:2px;margin-bottom:8px;}
+.ftag.predial{background:#eceaf8;color:#4840aa;}
+.ftag.territ{background:#fef3e2;color:#96620e;}
+.ftag-dot{width:6px;height:6px;border-radius:50%;}
+.ficha-logr{font-family:'Lora',serif;font-size:14px;font-weight:600;color:var(--header);line-height:1.35;}
+.ficha-meta{font-size:11px;color:var(--muted);margin-top:4px;font-weight:300;}
+.ficha-insc{font-size:11px;color:var(--accent);margin-top:3px;font-weight:500;}
+.ficha-body{flex:1;overflow-y:auto;padding:14px 18px 20px;}
+.ficha-body::-webkit-scrollbar{width:3px;}
+.ficha-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+.sec-label{font-size:9px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:var(--gold);margin:16px 0 8px;padding-bottom:5px;border-bottom:1px solid #f0ece2;}
+.sec-label:first-child{margin-top:4px;}
+.frow{display:flex;justify-content:space-between;align-items:baseline;padding:6px 0;border-bottom:1px solid #f5f2ec;gap:10px;}
+.frow:last-child{border:none;}
+.flabel{font-size:11.5px;color:var(--muted);font-weight:400;flex-shrink:0;max-width:52%;}
+.fval{font-size:12px;font-weight:500;color:#2a2a2a;text-align:right;}
+.fval.empty{color:#bbb;font-weight:300;font-style:italic;font-size:11px;}
+.vchip{background:#e8f4ec;color:var(--accent);border:1px solid #b8ddc8;padding:2px 8px;border-radius:3px;font-size:11.5px;font-weight:600;}
+.ficha-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:14px;color:var(--muted);padding:40px;text-align:center;}
+.ficha-empty-icon{font-size:40px;opacity:0.25;}
+.ficha-empty-text{font-size:13px;line-height:1.7;font-weight:300;}
+
+/* MODALS */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;align-items:center;justify-content:center;backdrop-filter:blur(2px);}
+.modal-bg.open{display:flex;}
+.modal{background:#fff;border-radius:10px;width:460px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,0.2);overflow:hidden;animation:slideUp 0.2s ease;}
+.modal.sm{width:380px;}
+@keyframes slideUp{from{transform:translateY(20px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+.modal-header{padding:18px 20px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.modal-title{font-family:'Lora',serif;font-size:16px;font-weight:600;color:var(--header);}
+.modal-close{width:28px;height:28px;border:none;background:none;cursor:pointer;color:var(--muted);font-size:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:background 0.15s;}
+.modal-close:hover{background:#f0ece4;}
+.modal-body{padding:20px;}
+.modal-footer{padding:14px 20px 18px;display:flex;gap:10px;justify-content:flex-end;border-top:1px solid var(--border);}
+.form-group{margin-top:16px;}
+.form-group:first-child{margin-top:0;}
+.form-label{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px;display:block;}
+.form-input{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:5px;font-family:'Outfit',sans-serif;font-size:13px;outline:none;transition:border 0.15s;}
+.form-input:focus{border-color:var(--accent);}
+.form-hint{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.5;}
+.color-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}
+.color-opt{width:26px;height:26px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:all 0.15s;flex-shrink:0;}
+.color-opt.sel{border-color:#333;transform:scale(1.15);}
+.btn-cancel{padding:8px 16px;border:1px solid var(--border);border-radius:5px;background:none;cursor:pointer;font-family:'Outfit',sans-serif;font-size:13px;color:var(--muted);transition:all 0.15s;}
+.btn-cancel:hover{background:#f0ece4;}
+.btn-confirm{padding:8px 20px;border:none;border-radius:5px;background:var(--accent);color:#fff;cursor:pointer;font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;transition:background 0.15s;opacity:0.4;pointer-events:none;}
+.btn-confirm.ready{opacity:1;pointer-events:auto;}
+.btn-confirm:hover{background:#0f3d27;}
+.btn-danger{padding:8px 20px;border:none;border-radius:5px;background:var(--danger);color:#fff;cursor:pointer;font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;}
+
+/* dropzone */
+.dropzone{border:2px dashed var(--border);border-radius:8px;padding:32px 20px;text-align:center;cursor:pointer;transition:all 0.2s;background:#faf9f5;position:relative;}
+.dropzone.over{border-color:var(--accent);background:#f0f8f4;}
+.dropzone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.dz-icon{font-size:34px;opacity:0.4;margin-bottom:10px;}
+.dz-text{font-size:14px;color:#555;font-weight:500;}
+.dz-sub{font-size:11px;color:var(--muted);margin-top:5px;}
+.dz-formats{display:flex;gap:8px;justify-content:center;margin-top:10px;}
+.dz-badge{background:#e8e3d8;color:#555;font-size:10px;font-weight:700;padding:2px 8px;border-radius:3px;}
+.file-loaded{display:none;background:#f0f8f4;border:1px solid #b8ddc8;border-radius:8px;padding:14px 16px;gap:12px;align-items:center;}
+.file-loaded.show{display:flex;}
+.fl-name{font-size:13px;font-weight:600;color:var(--accent);}
+.fl-meta{font-size:11px;color:var(--muted);margin-top:2px;}
+.modal-error{display:none;background:#fdf0ef;border:1px solid #f5c0bc;color:#c0392b;font-size:12px;padding:9px 13px;border-radius:5px;margin-top:12px;}
+.modal-error.show{display:block;}
+.progress-wrap{display:none;height:3px;background:var(--border);border-radius:2px;margin-top:12px;overflow:hidden;}
+.progress-wrap.show{display:block;}
+.progress-bar{height:100%;background:var(--accent);width:0;transition:width 0.3s;}
+
+/* status toast */
+#toast{position:fixed;bottom:24px;right:24px;z-index:9999;background:var(--header);color:#fff;padding:11px 18px;border-radius:7px;font-size:13px;font-weight:500;transform:translateY(80px);opacity:0;transition:all 0.3s;pointer-events:none;max-width:300px;line-height:1.4;}
+#toast.show{transform:translateY(0);opacity:1;}
+#toast.error{background:var(--danger);}
+#toast.success{background:var(--accent);}
+
+/* Leaflet */
+.leaflet-control-zoom{border:1px solid var(--border)!important;border-radius:5px!important;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1)!important;}
+.leaflet-control-zoom a{color:var(--accent)!important;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-main">Barra de São Miguel</div>
+    <div class="logo-sub">Alagoas · Brasil</div>
+  </div>
+  <div class="hdiv"></div>
+  <span class="hbadge">CTM</span>
+  <div class="htitle">Cadastro Territorial e Mobiliário</div>
+  <div class="hright">
+    <div class="hleg">
+      <div class="leg"><div class="leg-sq" style="background:#5b52c4"></div>Predial</div>
+      <div class="leg"><div class="leg-sq" style="background:#c47d1a"></div>Territorial</div>
+    </div>
+    <div class="hdiv"></div>
+    <div id="adminBadge">
+      <span class="admin-name">✓ Admin</span>
+      <button id="logoutBtn" onclick="logout()">Sair</button>
+    </div>
+    <button id="loginBtn" onclick="openLoginModal()">🔐 Entrar como admin</button>
+  </div>
+</header>
+
+<div class="main">
+  <div id="layersPanel">
+    <div class="lp-header">
+      <span class="lp-title">Camadas <span id="layerCountBadge" style="font-weight:400;color:#aaa"></span></span>
+      <button class="btn-add" id="btnAdd" onclick="openAddModal()" disabled>＋ Adicionar</button>
+    </div>
+    <div class="layers-list" id="layersList">
+      <div class="lp-empty" id="lpEmpty">
+        <div class="lp-empty-icon">🗺</div>
+        <div class="lp-empty-text">Carregando camadas…</div>
+      </div>
+    </div>
+    <div class="lp-tip" id="lpTip">
+      Visualização pública. <span id="lpTipAdmin" style="display:none">Entre como admin para editar.</span>
+    </div>
+  </div>
+
+  <div id="map">
+    <div class="search-wrap">
+      <div class="search-box">
+        <span style="color:var(--muted);font-size:13px">🔍</span>
+        <input type="text" id="searchInput" placeholder="Buscar logradouro, inscrição, quadra…"/>
+        <span id="searchClear" onclick="clearSearch()">✕</span>
+      </div>
+      <div class="search-results" id="searchResults"></div>
+    </div>
+    <div class="map-counter" id="counter">carregando…</div>
+  </div>
+
+  <div id="fichaPanel">
+    <button class="ficha-close" onclick="closePanel()">✕</button>
+    <div id="fichaContent">
+      <div class="ficha-empty">
+        <div class="ficha-empty-icon">📍</div>
+        <div class="ficha-empty-text">Selecione um imóvel no mapa para ver a ficha cadastral</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL LOGIN -->
+<div class="modal-bg" id="loginModal">
+  <div class="modal sm">
+    <div class="modal-header">
+      <span class="modal-title">Acesso Admin</span>
+      <button class="modal-close" onclick="closeLoginModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group" style="margin-top:0">
+        <label class="form-label">GitHub Token</label>
+        <input type="password" id="tokenInput" class="form-input" placeholder="ghp_…" oninput="document.getElementById('btnLoginConfirm').classList.toggle('ready', this.value.length > 10)"/>
+        <div class="form-hint">Token pessoal do GitHub com permissão <strong>repo</strong>. Fica salvo só nesta sessão do navegador.</div>
+      </div>
+      <div class="modal-error" id="loginError"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeLoginModal()">Cancelar</button>
+      <button class="btn-confirm" id="btnLoginConfirm" onclick="confirmLogin()">Entrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ADICIONAR CAMADA -->
+<div class="modal-bg" id="addModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Adicionar Camada</span>
+      <button class="modal-close" onclick="closeAddModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="dropzone" id="dropzone">
+        <input type="file" id="fileInput" accept=".geojson,.json,.kml" onchange="handleFile(this.files[0])"/>
+        <div class="dz-icon">📂</div>
+        <div class="dz-text">Arraste o arquivo ou clique para selecionar</div>
+        <div class="dz-sub">Será salvo no repositório GitHub</div>
+        <div class="dz-formats">
+          <span class="dz-badge">GeoJSON</span>
+          <span class="dz-badge">KML</span>
+          <span class="dz-badge">EPSG:4326</span>
+          <span class="dz-badge">EPSG:31985</span>
+        </div>
+      </div>
+      <div class="file-loaded" id="fileLoaded">
+        <span style="font-size:22px">✅</span>
+        <div>
+          <div class="fl-name" id="flName">—</div>
+          <div class="fl-meta" id="flMeta">—</div>
+        </div>
+      </div>
+      <div class="progress-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
+      <div class="modal-error" id="addError"></div>
+      <div class="form-group">
+        <label class="form-label">Nome da camada</label>
+        <input type="text" id="addLayerName" class="form-input" placeholder="Ex: Centro, Barra Nova…"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Cor</label>
+        <div class="color-row" id="addColorRow"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeAddModal()">Cancelar</button>
+      <button class="btn-confirm" id="btnAddConfirm" onclick="confirmAdd()">Salvar no GitHub</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR CAMADA -->
+<div class="modal-bg" id="editModal">
+  <div class="modal sm">
+    <div class="modal-header">
+      <span class="modal-title">Editar Camada</span>
+      <button class="modal-close" onclick="closeEditModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editId"/>
+      <div class="form-group" style="margin-top:0">
+        <label class="form-label">Nome</label>
+        <input type="text" id="editName" class="form-input"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Cor</label>
+        <div class="color-row" id="editColorRow"></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+          <label class="form-label" style="margin:0;white-space:nowrap">Personalizada</label>
+          <input type="color" id="editColorCustom" style="height:30px;width:50px;border:1px solid var(--border);border-radius:4px;cursor:pointer;padding:2px"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Opacidade</label>
+        <div style="display:flex;align-items:center;gap:10px">
+          <input type="range" id="editOpacity" min="10" max="90" value="45" style="flex:1;accent-color:var(--accent)"/>
+          <span id="editOpacityVal" style="font-size:12px;color:var(--muted);width:32px">45%</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Espessura da borda</label>
+        <div style="display:flex;align-items:center;gap:10px">
+          <input type="range" id="editWeight" min="1" max="5" value="1" step="0.5" style="flex:1;accent-color:var(--accent)"/>
+          <span id="editWeightVal" style="font-size:12px;color:var(--muted);width:32px">1px</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeEditModal()">Cancelar</button>
+      <button class="btn-confirm ready" onclick="confirmEdit()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONFIRMAR EXCLUSÃO -->
+<div class="modal-bg" id="deleteModal">
+  <div class="modal sm">
+    <div class="modal-header">
+      <span class="modal-title">Remover Camada</span>
+      <button class="modal-close" onclick="document.getElementById('deleteModal').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:#444;line-height:1.6">Tem certeza que deseja remover a camada <strong id="deleteLayerName"></strong>? O arquivo será excluído do GitHub.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="document.getElementById('deleteModal').classList.remove('open')">Cancelar</button>
+      <button class="btn-danger" onclick="confirmDelete()">Sim, remover</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
+<script>
+
+// ══════════════════════════════════════════════════
+// CONFIG — repositório GitHub
+// ══════════════════════════════════════════════════
+const GH_OWNER = 'rufbarbosa-dev';
+const GH_REPO  = 'bsm-ctm';
+const GH_BRANCH = 'main';
+const RAW_BASE = `https://raw.githubusercontent.com/${GH_OWNER}/${GH_REPO}/${GH_BRANCH}`;
+const API_BASE = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}`;
+
+const COLORS = ['#5b52c4','#1a7a4a','#c47d1a','#c0392b','#2980b9','#8e44ad','#16a085','#d35400','#2c3e50','#c9993a'];
+
+// ══════════════════════════════════════════════════
+// ESTADO
+// ══════════════════════════════════════════════════
+let ghToken       = sessionStorage.getItem('bsm_token') || null;
+let isAdmin       = false;
+let layersConfig  = [];       // [ { nome, arquivo, cor, visivel } ]
+let leafletLayers = {};       // { nome: L.GeoJSON }
+let featuresMeta  = [];       // [ { feature, layerNome } ]
+let selectedLeaf  = null;
+let pendingGeoJSON = null;
+let pendingFileName = null;
+let addSelectedColor = COLORS[0];
+let editSelectedColor = null;
+let deleteTargetNome = null;
+
+// ══════════════════════════════════════════════════
+// PROJ4
+// ══════════════════════════════════════════════════
+proj4.defs('EPSG:31985','+proj=utm +zone=25 +south +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
+
+function needsReproject(geojson) {
+  const crs = geojson.crs?.properties?.name || '';
+  if (crs.includes('31985')) return true;
+  const flat = geojson.features?.[0]?.geometry?.coordinates?.flat?.(Infinity) ?? [];
+  return Math.abs(flat[0]) > 1000;
+}
+
+function reproject(coords) {
+  if (typeof coords[0] === 'number') {
+    const [lon, lat] = proj4('EPSG:31985','EPSG:4326',[coords[0],coords[1]]);
+    return [lon, lat];
+  }
+  return coords.map(reproject);
+}
+
+function reprojectGeoJSON(gj) {
+  const out = JSON.parse(JSON.stringify(gj));
+  out.features.forEach(f => { if (f.geometry?.coordinates) f.geometry.coordinates = reproject(f.geometry.coordinates); });
+  return out;
+}
+
+// ══════════════════════════════════════════════════
+// KML → GEOJSON
+// ══════════════════════════════════════════════════
+function kmlToGeoJSON(str) {
+  const doc = new DOMParser().parseFromString(str, 'text/xml');
+  const features = [];
+  doc.querySelectorAll('Placemark').forEach(pm => {
+    const props = {};
+    pm.querySelectorAll('SimpleData').forEach(s => props[s.getAttribute('name')] = s.textContent.trim());
+    pm.querySelectorAll('Data').forEach(d => { const v = d.querySelector('value')?.textContent?.trim(); if (v) props[d.getAttribute('name')] = v; });
+    const nm = pm.querySelector('name')?.textContent?.trim(); if (nm) props.name = nm;
+    let geometry = null;
+    const parseC = s => s.trim().split(/\s+/).map(c => { const [lo,la] = c.split(',').map(Number); return [lo,la]; });
+    const poly = pm.querySelector('Polygon');
+    const pt   = pm.querySelector('Point');
+    const ls   = pm.querySelector('LineString');
+    if (poly) {
+      const outer = poly.querySelector('outerBoundaryIs coordinates, outerBoundaryIs > LinearRing > coordinates');
+      if (outer) {
+        const rings = [parseC(outer.textContent)];
+        poly.querySelectorAll('innerBoundaryIs coordinates').forEach(i => rings.push(parseC(i.textContent)));
+        geometry = { type:'Polygon', coordinates:rings };
+      }
+    } else if (pt) {
+      const c = pt.querySelector('coordinates');
+      if (c) { const [lo,la] = c.textContent.trim().split(',').map(Number); geometry = { type:'Point', coordinates:[lo,la] }; }
+    } else if (ls) {
+      const c = ls.querySelector('coordinates');
+      if (c) geometry = { type:'LineString', coordinates:parseC(c.textContent) };
+    }
+    if (geometry) features.push({ type:'Feature', properties:props, geometry });
+  });
+  return { type:'FeatureCollection', features };
+}
+
+// ══════════════════════════════════════════════════
+// GITHUB API
+// ══════════════════════════════════════════════════
+async function ghGet(path) {
+  const r = await fetch(`${API_BASE}${path}`, {
+    headers: { Authorization: `token ${ghToken}`, Accept: 'application/vnd.github.v3+json' }
+  });
+  if (!r.ok) throw new Error(`GitHub API ${r.status}: ${path}`);
+  return r.json();
+}
+
+async function ghPut(path, message, content, sha = null) {
+  const body = { message, content: btoa(unescape(encodeURIComponent(content))), branch: GH_BRANCH };
+  if (sha) body.sha = sha;
+  const r = await fetch(`${API_BASE}/contents${path}`, {
+    method: 'PUT',
+    headers: { Authorization: `token ${ghToken}`, Accept: 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!r.ok) { const e = await r.json(); throw new Error(e.message || 'Erro ao salvar'); }
+  return r.json();
+}
+
+async function ghDelete(path, message, sha) {
+  const r = await fetch(`${API_BASE}/contents${path}`, {
+    method: 'DELETE',
+    headers: { Authorization: `token ${ghToken}`, Accept: 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, sha, branch: GH_BRANCH })
+  });
+  if (!r.ok) throw new Error('Erro ao excluir arquivo');
+}
+
+async function getFileSha(path) {
+  try {
+    const data = await ghGet(`/contents${path}`);
+    return data.sha;
+  } catch { return null; }
+}
+
+async function saveLayersJson() {
+  const content = JSON.stringify(layersConfig, null, 2);
+  const sha = await getFileSha('/layers.json');
+  await ghPut('/layers.json', 'Atualiza layers.json', content, sha);
+}
+
+// ══════════════════════════════════════════════════
+// MAPA
+// ══════════════════════════════════════════════════
+const map = L.map('map', { center:[-9.845,-35.906], zoom:14, zoomControl:true });
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution:'© OpenStreetMap contributors', maxZoom:21
+}).addTo(map);
+
+function darken(hex) {
+  const n = parseInt(hex.replace('#',''),16);
+  const r=Math.max(0,(n>>16)-40), g=Math.max(0,((n>>8)&0xff)-40), b=Math.max(0,(n&0xff)-40);
+  return '#'+[r,g,b].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+
+function layerStyle(feature, cfg) {
+  const isPredial = (feature.properties?.Tipo||'').toUpperCase() === 'PREDIAL';
+  const cor = cfg.cor || '#5b52c4';
+  return {
+    fillColor:   isPredial ? '#5b52c4' : cor,
+    fillOpacity: cfg.fillOpacity || 0.45,
+    color:       isPredial ? '#3d35a8' : darken(cor),
+    weight:      cfg.weight || 1.2,
+    opacity:     0.9
+  };
+}
+
+function buildLeafletLayer(cfg, geojson) {
+  return L.geoJSON(geojson, {
+    style: f => layerStyle(f, cfg),
+    onEachFeature(feature, leaf) {
+      leaf._layerNome = cfg.nome;
+      leaf.on({
+        mouseover(e) {
+          if (e.target !== selectedLeaf) e.target.setStyle({ fillOpacity:0.75, weight:2.5, color:'#0f2e20' });
+          e.target.getElement()?.setAttribute('style','cursor:pointer');
+        },
+        mouseout(e) {
+          if (e.target !== selectedLeaf) leafletLayers[cfg.nome]?.resetStyle(e.target);
+        },
+        click(e) {
+          if (selectedLeaf && selectedLeaf !== e.target) {
+            const prev = selectedLeaf._layerNome;
+            leafletLayers[prev]?.resetStyle(selectedLeaf);
+          }
+          selectedLeaf = e.target;
+          e.target.setStyle({ fillOpacity:0.8, weight:2.5, color:'#0f2e20' });
+          openFicha(feature);
+          map.fitBounds(e.target.getBounds(), { padding:[50,50] });
+        }
+      });
+    }
+  });
+}
+
+function updateCounter() {
+  let vis = 0, total = 0;
+  layersConfig.forEach(c => {
+    const n = featuresMeta.filter(f => f.layerNome === c.nome).length;
+    total += n;
+    if (c.visivel !== false) vis += n;
+  });
+  document.getElementById('counter').textContent =
+    `${vis.toLocaleString('pt-BR')} visíveis · ${total.toLocaleString('pt-BR')} total`;
+}
+
+// ══════════════════════════════════════════════════
+// RENDER LAYERS LIST
+// ══════════════════════════════════════════════════
+function renderLayersList() {
+  const list = document.getElementById('layersList');
+  const empty = document.getElementById('lpEmpty');
+  list.querySelectorAll('.layer-item').forEach(e => e.remove());
+  document.getElementById('layerCountBadge').textContent = layersConfig.length ? `(${layersConfig.length})` : '';
+
+  if (!layersConfig.length) {
+    empty.style.display = 'flex';
+    empty.querySelector('.lp-empty-text').textContent = 'Nenhuma camada disponível.';
+    return;
+  }
+  empty.style.display = 'none';
+
+  layersConfig.forEach(cfg => {
+    const count = featuresMeta.filter(f => f.layerNome === cfg.nome).length;
+    const item = document.createElement('div');
+    item.className = 'layer-item';
+    item.dataset.nome = cfg.nome;
+    item.innerHTML = `
+      <div class="layer-toggle ${cfg.visivel !== false ? 'on' : ''}" onclick="toggleLayer('${cfg.nome}')"></div>
+      <div class="layer-swatch" style="background:${cfg.cor}"></div>
+      <div class="layer-name">${cfg.nome}</div>
+      <div class="layer-count">${count}</div>
+      <div class="layer-actions ${isAdmin ? 'admin-visible' : ''}">
+        <button class="layer-btn" onclick="openEditModal('${cfg.nome}')" title="Editar">✏️</button>
+        <button class="layer-btn del" onclick="openDeleteModal('${cfg.nome}')" title="Remover">🗑</button>
+      </div>
+    `;
+    list.appendChild(item);
+  });
+}
+
+function toggleLayer(nome) {
+  const cfg = layersConfig.find(c => c.nome === nome);
+  if (!cfg) return;
+  cfg.visivel = cfg.visivel === false ? true : false;
+  if (cfg.visivel) { leafletLayers[nome] && map.addLayer(leafletLayers[nome]); }
+  else             { leafletLayers[nome] && map.removeLayer(leafletLayers[nome]); }
+  document.querySelector(`.layer-item[data-nome="${nome}"] .layer-toggle`)?.classList.toggle('on', cfg.visivel !== false);
+  updateCounter();
+}
+
+// ══════════════════════════════════════════════════
+// CARREGAR DADOS PÚBLICOS
+// ══════════════════════════════════════════════════
+async function loadPublicLayers() {
+  try {
+    const r = await fetch(`${RAW_BASE}/layers.json?t=${Date.now()}`);
+    if (!r.ok) { showEmpty('Nenhuma camada publicada ainda.'); updateCounter(); return; }
+    layersConfig = await r.json();
+  } catch { showEmpty('Nenhuma camada publicada ainda.'); updateCounter(); return; }
+
+  const promises = layersConfig.map(async cfg => {
+    try {
+      const r = await fetch(`${RAW_BASE}/${cfg.arquivo}?t=${Date.now()}`);
+      if (!r.ok) return;
+      let gj = await r.json();
+      if (needsReproject(gj)) gj = reprojectGeoJSON(gj);
+      gj.features?.forEach(f => featuresMeta.push({ feature:f, layerNome:cfg.nome }));
+      const ll = buildLeafletLayer(cfg, gj);
+      leafletLayers[cfg.nome] = ll;
+      if (cfg.visivel !== false) map.addLayer(ll);
+    } catch(e) { console.warn('Erro camada', cfg.nome, e); }
+  });
+
+  await Promise.all(promises);
+  renderLayersList();
+  updateCounter();
+
+  const bounds = Object.values(leafletLayers).filter(l => l.getLayers().length).map(l => { try { return l.getBounds(); } catch { return null; } }).filter(Boolean);
+  if (bounds.length) { try { map.fitBounds(bounds.reduce((a,b) => a.extend(b)), { padding:[20,20] }); } catch {} }
+}
+
+function showEmpty(msg) {
+  const empty = document.getElementById('lpEmpty');
+  empty.style.display = 'flex';
+  empty.querySelector('.lp-empty-text').textContent = msg;
+}
+
+// ══════════════════════════════════════════════════
+// AUTH
+// ══════════════════════════════════════════════════
+function openLoginModal() { document.getElementById('loginModal').classList.add('open'); }
+function closeLoginModal() { document.getElementById('loginModal').classList.remove('open'); }
+
+async function confirmLogin() {
+  const token = document.getElementById('tokenInput').value.trim();
+  if (!token) return;
+  try {
+    const r = await fetch('https://api.github.com/user', {
+      headers: { Authorization: `token ${token}` }
+    });
+    if (!r.ok) throw new Error('Token inválido');
+    const user = await r.json();
+    if (user.login !== GH_OWNER) throw new Error(`Token não pertence ao usuário ${GH_OWNER}`);
+    ghToken = token;
+    sessionStorage.setItem('bsm_token', token);
+    isAdmin = true;
+    document.getElementById('adminBadge').classList.add('show');
+    document.getElementById('loginBtn').style.display = 'none';
+    document.getElementById('btnAdd').disabled = false;
+    document.getElementById('lpTipAdmin').style.display = 'none';
+    closeLoginModal();
+    renderLayersList();
+    toast('✅ Modo admin ativado', 'success');
+  } catch(e) {
+    document.getElementById('loginError').textContent = e.message;
+    document.getElementById('loginError').classList.add('show');
+  }
+}
+
+function logout() {
+  ghToken = null; isAdmin = false;
+  sessionStorage.removeItem('bsm_token');
+  document.getElementById('adminBadge').classList.remove('show');
+  document.getElementById('loginBtn').style.display = 'flex';
+  document.getElementById('btnAdd').disabled = true;
+  renderLayersList();
+  toast('Sessão encerrada');
+}
+
+// ══════════════════════════════════════════════════
+// MODAL ADICIONAR
+// ══════════════════════════════════════════════════
+function openAddModal() {
+  pendingGeoJSON = null; pendingFileName = null;
+  document.getElementById('fileInput').value = '';
+  document.getElementById('addLayerName').value = '';
+  document.getElementById('fileLoaded').classList.remove('show');
+  document.getElementById('dropzone').style.display = 'block';
+  document.getElementById('addError').classList.remove('show');
+  document.getElementById('progressWrap').classList.remove('show');
+  document.getElementById('btnAddConfirm').classList.remove('ready');
+  addSelectedColor = COLORS[layersConfig.length % COLORS.length];
+  document.getElementById('addColorRow').innerHTML = COLORS.map(c =>
+    `<div class="color-opt${c===addSelectedColor?' sel':''}" style="background:${c}" onclick="addSelColor('${c}')"></div>`
+  ).join('');
+  document.getElementById('addModal').classList.add('open');
+}
+
+function closeAddModal() { document.getElementById('addModal').classList.remove('open'); }
+
+function addSelColor(c) {
+  addSelectedColor = c;
+  document.querySelectorAll('#addColorRow .color-opt').forEach(el => {
+    el.classList.toggle('sel', el.getAttribute('onclick') === `addSelColor('${c}')`);
+  });
+}
+
+function handleFile(file) {
+  if (!file) return;
+  document.getElementById('addError').classList.remove('show');
+  const prog = document.getElementById('progressWrap');
+  const bar  = document.getElementById('progressBar');
+  prog.classList.add('show'); bar.style.width = '20%';
+  const reader = new FileReader();
+  reader.onload = e => {
+    bar.style.width = '70%';
+    try {
+      let gj;
+      if (file.name.toLowerCase().endsWith('.kml')) gj = kmlToGeoJSON(e.target.result);
+      else gj = JSON.parse(e.target.result);
+      if (!gj.features?.length) throw new Error('Nenhum imóvel encontrado.');
+      if (needsReproject(gj)) gj = reprojectGeoJSON(gj);
+      bar.style.width = '100%';
+      setTimeout(() => prog.classList.remove('show'), 400);
+      pendingGeoJSON = gj;
+      const baseName = (gj.name || file.name.replace(/\.(geojson|json|kml)$/i,'').replace(/[_-]/g,' ')).replace(/\b\w/g,c=>c.toUpperCase());
+      pendingFileName = file.name.replace(/\.kml$/i,'.geojson').replace(/\s+/g,'_').toLowerCase();
+      if (!document.getElementById('addLayerName').value) document.getElementById('addLayerName').value = baseName;
+      document.getElementById('dropzone').style.display = 'none';
+      document.getElementById('flName').textContent = baseName;
+      document.getElementById('flMeta').textContent = `${gj.features.length.toLocaleString('pt-BR')} imóveis · ${(file.size/1024).toFixed(0)} KB`;
+      document.getElementById('fileLoaded').classList.add('show');
+      document.getElementById('btnAddConfirm').classList.add('ready');
+    } catch(err) {
+      bar.style.width = '0'; prog.classList.remove('show');
+      document.getElementById('addError').textContent = 'Erro: ' + err.message;
+      document.getElementById('addError').classList.add('show');
+    }
+  };
+  reader.readAsText(file);
+}
+
+const dz = document.getElementById('dropzone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('over'); if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+
+async function confirmAdd() {
+  if (!pendingGeoJSON) return;
+  const nome    = document.getElementById('addLayerName').value.trim() || 'Camada';
+  const arquivo = `geojson/${pendingFileName}`;
+  const cfg     = { nome, arquivo, cor: addSelectedColor, visivel: true };
+
+  document.getElementById('btnAddConfirm').textContent = 'Salvando…';
+  document.getElementById('btnAddConfirm').classList.remove('ready');
+
+  try {
+    const content = JSON.stringify(pendingGeoJSON);
+    const sha = await getFileSha(`/${arquivo}`);
+    await ghPut(`/${arquivo}`, `Adiciona camada: ${nome}`, content, sha);
+    layersConfig.push(cfg);
+    await saveLayersJson();
+
+    // add to map
+    pendingGeoJSON.features?.forEach(f => featuresMeta.push({ feature:f, layerNome:nome }));
+    const ll = buildLeafletLayer(cfg, pendingGeoJSON);
+    leafletLayers[nome] = ll;
+    map.addLayer(ll);
+    try { map.fitBounds(ll.getBounds(), { padding:[20,20] }); } catch {}
+
+    renderLayersList();
+    updateCounter();
+    closeAddModal();
+    toast(`✅ "${nome}" adicionada com sucesso!`, 'success');
+  } catch(e) {
+    document.getElementById('addError').textContent = 'Erro ao salvar: ' + e.message;
+    document.getElementById('addError').classList.add('show');
+    document.getElementById('btnAddConfirm').textContent = 'Salvar no GitHub';
+    document.getElementById('btnAddConfirm').classList.add('ready');
+  }
+}
+
+// ══════════════════════════════════════════════════
+// MODAL EDITAR
+// ══════════════════════════════════════════════════
+function openEditModal(nome) {
+  const cfg = layersConfig.find(c => c.nome === nome);
+  if (!cfg) return;
+  document.getElementById('editId').value = nome;
+  document.getElementById('editName').value = cfg.nome;
+  const op = Math.round((cfg.fillOpacity || 0.45) * 100);
+  const wt = cfg.weight || 1.2;
+  document.getElementById('editOpacity').value = op;
+  document.getElementById('editOpacityVal').textContent = op + '%';
+  document.getElementById('editWeight').value = wt;
+  document.getElementById('editWeightVal').textContent = wt + 'px';
+  document.getElementById('editColorCustom').value = cfg.cor;
+  editSelectedColor = cfg.cor;
+  document.getElementById('editColorRow').innerHTML = COLORS.map(c =>
+    `<div class="color-opt${c===cfg.cor?' sel':''}" style="background:${c}" onclick="editSelColor('${c}')"></div>`
+  ).join('');
+  document.getElementById('editModal').classList.add('open');
+}
+
+function closeEditModal() { document.getElementById('editModal').classList.remove('open'); }
+
+function editSelColor(c) {
+  editSelectedColor = c;
+  document.getElementById('editColorCustom').value = c;
+  document.querySelectorAll('#editColorRow .color-opt').forEach(el =>
+    el.classList.toggle('sel', el.getAttribute('onclick') === `editSelColor('${c}')`));
+}
+
+document.getElementById('editOpacity').addEventListener('input', function() { document.getElementById('editOpacityVal').textContent = this.value + '%'; });
+document.getElementById('editWeight').addEventListener('input', function() { document.getElementById('editWeightVal').textContent = this.value + 'px'; });
+document.getElementById('editColorCustom').addEventListener('input', function() {
+  editSelectedColor = this.value;
+  document.querySelectorAll('#editColorRow .color-opt').forEach(el => el.classList.remove('sel'));
+});
+
+async function confirmEdit() {
+  const nome    = document.getElementById('editId').value;
+  const novoNome = document.getElementById('editName').value.trim() || nome;
+  const cor     = editSelectedColor || document.getElementById('editColorCustom').value;
+  const opacity = parseInt(document.getElementById('editOpacity').value) / 100;
+  const weight  = parseFloat(document.getElementById('editWeight').value);
+  const cfg = layersConfig.find(c => c.nome === nome);
+  if (!cfg) return;
+
+  cfg.nome = novoNome; cfg.cor = cor; cfg.fillOpacity = opacity; cfg.weight = weight;
+
+  if (leafletLayers[nome]) {
+    leafletLayers[nome].setStyle(f => layerStyle(f, cfg));
+    if (nome !== novoNome) {
+      leafletLayers[novoNome] = leafletLayers[nome];
+      delete leafletLayers[nome];
+      featuresMeta.forEach(f => { if (f.layerNome === nome) f.layerNome = novoNome; });
+    }
+  }
+
+  try {
+    await saveLayersJson();
+    renderLayersList();
+    closeEditModal();
+    toast('✅ Camada atualizada', 'success');
+  } catch(e) { toast('Erro ao salvar: ' + e.message, 'error'); }
+}
+
+// ══════════════════════════════════════════════════
+// MODAL DELETAR
+// ══════════════════════════════════════════════════
+function openDeleteModal(nome) {
+  deleteTargetNome = nome;
+  document.getElementById('deleteLayerName').textContent = nome;
+  document.getElementById('deleteModal').classList.add('open');
+}
+
+async function confirmDelete() {
+  const nome = deleteTargetNome;
+  const cfg  = layersConfig.find(c => c.nome === nome);
+  if (!cfg) return;
+  document.getElementById('deleteModal').classList.remove('open');
+  toast('Removendo…');
+
+  try {
+    const sha = await getFileSha(`/${cfg.arquivo}`);
+    if (sha) await ghDelete(`/${cfg.arquivo}`, `Remove camada: ${nome}`, sha);
+    layersConfig = layersConfig.filter(c => c.nome !== nome);
+    await saveLayersJson();
+
+    if (leafletLayers[nome]) { map.removeLayer(leafletLayers[nome]); delete leafletLayers[nome]; }
+    featuresMeta = featuresMeta.filter(f => f.layerNome !== nome);
+    if (selectedLeaf?._layerNome === nome) { selectedLeaf = null; closePanel(); }
+
+    renderLayersList();
+    updateCounter();
+    toast(`✅ "${nome}" removida`, 'success');
+  } catch(e) { toast('Erro ao remover: ' + e.message, 'error'); }
+}
+
+// ══════════════════════════════════════════════════
+// FICHA
+// ══════════════════════════════════════════════════
+function v(x) { if (x===null||x===undefined||x===''||x==='null') return null; return String(x).trim(); }
+function fmt(x,s='') { const r=v(x); return r ? `<span class="fval">${r}${s}</span>` : '<span class="fval empty">—</span>'; }
+function fmtN(x,s='') { const r=v(x); if(!r) return '<span class="fval empty">—</span>'; const n=parseFloat(r); return isNaN(n)?`<span class="fval">${r}</span>`:`<span class="fval">${n.toLocaleString('pt-BR',{maximumFractionDigits:2})}${s}</span>`; }
+function fmtR(x) { const r=v(x); if(!r) return '<span class="fval empty">—</span>'; const n=parseFloat(r); return isNaN(n)?`<span class="fval">${r}</span>`:`<span class="fval"><span class="vchip">R$ ${n.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span></span>`; }
+function row(l,val) { return `<div class="frow"><span class="flabel">${l}</span>${val}</div>`; }
+
+function openFicha(feature) {
+  const p = feature.properties;
+  const isPredial = (p.Tipo||'').toUpperCase() === 'PREDIAL';
+  const img = v(p.imagem);
+  const logr = v(p.Logradouro)||v(p.name)||'—';
+  const num  = v(p['nº'])||'';
+  const knownKeys = new Set(['Tipo','Logradouro','nº','Bairro','Insclmo','Condominio','imagem','Código','matricula','Quadra','PARCELA','Complement','tipo_imove','perimetro','andar','tipo_fecha','Verificar','Obs','area_m²','area_const','area_propo','area_total','area_lazer','terreno_to','fracao_ide','valor_m2_t','valor_terr','fator_situ','topografia','fator_topo','pedologia','fator_pedo','latitude','longitude','id','área_tota','name']);
+  const extras = Object.entries(p).filter(([k])=>!knownKeys.has(k)&&v(p[k])).map(([k,val])=>row(k,fmt(val))).join('');
+
+  document.getElementById('fichaContent').innerHTML = `
+    ${img ? `<img class="ficha-photo" src="${img}" alt="Foto" onerror="this.outerHTML='<div class=no-photo><div class=no-photo-icon>🏠</div><span>Foto não disponível</span></div>'"/>` : '<div class="no-photo"><div class="no-photo-icon">🏠</div><span>Sem foto cadastrada</span></div>'}
+    <div class="ficha-top">
+      <div class="ftag ${isPredial?'predial':'territ'}">
+        <div class="ftag-dot" style="background:${isPredial?'#5b52c4':'#c47d1a'}"></div>
+        ${p.Tipo||'IMÓVEL'}
+      </div>
+      <div class="ficha-logr">${logr}${num?', nº '+num:''}</div>
+      ${v(p.Bairro)||v(p.Condominio) ? `<div class="ficha-meta">${[v(p.Bairro),v(p.Condominio)].filter(Boolean).join(' · ')}</div>` : ''}
+      ${v(p.Insclmo) ? `<div class="ficha-insc">${p.Insclmo}</div>` : ''}
+    </div>
+    <div class="ficha-body">
+      <div class="sec-label">Identificação</div>
+      ${row('Código',fmt(p['Código']))}${row('Matrícula',fmt(p.matricula))}${row('Quadra',fmt(p.Quadra))}${row('Parcela',fmt(p.PARCELA))}${row('Complemento',fmt(p.Complement))}${row('Tipo de imóvel',fmt(p.tipo_imove))}${row('Perímetro',fmt(p.perimetro))}${row('Andar',fmt(p.andar))}${row('Tipo fechamento',fmt(p.tipo_fecha))}
+      ${v(p.Verificar)?row('⚠ Verificar',`<span class="fval" style="color:#c44;font-size:11px">${p.Verificar}</span>`):''}
+      ${v(p.Obs)?row('Obs.',fmt(p.Obs)):''}
+      <div class="sec-label">Áreas</div>
+      ${row('Área lote',fmtN(p['area_m²'],' m²'))}${row('Área construída',fmtN(p.area_const,' m²'))}${row('Área proporcional',fmtN(p.area_propo,' m²'))}${row('Área total',fmtN(p.area_total,' m²'))}${row('Área lazer',fmtN(p.area_lazer,' m²'))}${row('Terreno total',fmtN(p.terreno_to,' m²'))}${row('Fração ideal',fmtN(p.fracao_ide))}
+      <div class="sec-label">Avaliação</div>
+      ${row('Valor m² terreno',fmtR(p.valor_m2_t))}${row('Valor terreno',fmtR(p.valor_terr))}${row('Fator situação',fmtN(p.fator_situ))}${row('Topografia',fmt(p.topografia))}${row('Fator topografia',fmtN(p.fator_topo))}${row('Pedologia',fmt(p.pedologia))}${row('Fator pedologia',fmtN(p.fator_pedo))}
+      ${extras?`<div class="sec-label">Outros campos</div>${extras}`:''}
+    </div>
+  `;
+  document.getElementById('fichaPanel').classList.add('open');
+}
+
+function closePanel() {
+  document.getElementById('fichaPanel').classList.remove('open');
+  if (selectedLeaf) { leafletLayers[selectedLeaf._layerNome]?.resetStyle(selectedLeaf); selectedLeaf = null; }
+}
+
+// ══════════════════════════════════════════════════
+// BUSCA
+// ══════════════════════════════════════════════════
+let searchData = [];
+function clearSearch() {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchResults').classList.remove('show');
+  document.getElementById('searchClear').classList.remove('show');
+}
+document.getElementById('searchInput').addEventListener('input', function() {
+  const q = this.value.trim().toLowerCase();
+  document.getElementById('searchClear').classList.toggle('show', q.length > 0);
+  if (q.length < 2) { document.getElementById('searchResults').classList.remove('show'); return; }
+  searchData = featuresMeta.filter(({ feature:f }) => {
+    const p = f.properties;
+    return (p.Logradouro||'').toLowerCase().includes(q)||(p.Insclmo||'').toLowerCase().includes(q)||(p.Quadra||'').toString().toLowerCase().includes(q)||(p.Bairro||'').toLowerCase().includes(q)||(p['Código']||'').toString().includes(q)||(p.name||'').toLowerCase().includes(q);
+  }).slice(0,12);
+  const box = document.getElementById('searchResults');
+  box.innerHTML = searchData.length
+    ? searchData.map((item,i) => {
+        const p = item.feature.properties;
+        const main = [p.Logradouro||p.name, p['nº']?'nº '+p['nº']:''].filter(Boolean).join(', ')||'—';
+        const sub  = [p.Bairro,p.Insclmo].filter(Boolean).join(' · ');
+        return `<div class="sri" onclick="zoomToResult(${i})"><div class="sri-main">${main}</div>${sub?`<div class="sri-sub">${sub}</div>`:''}</div>`;
+      }).join('')
+    : '<div class="sri"><span class="sri-sub">Nenhum resultado</span></div>';
+  box.classList.add('show');
+});
+
+function zoomToResult(i) {
+  const item = searchData[i];
+  if (!item) return;
+  document.getElementById('searchResults').classList.remove('show');
+  const ll = leafletLayers[item.layerNome];
+  if (!ll) return;
+  ll.eachLayer(leaf => {
+    const p = leaf.feature?.properties;
+    const fp = item.feature.properties;
+    if (p && (p['Código'] === fp['Código'] || (p.Insclmo && p.Insclmo === fp.Insclmo))) {
+      if (selectedLeaf && selectedLeaf !== leaf) leafletLayers[selectedLeaf._layerNome]?.resetStyle(selectedLeaf);
+      selectedLeaf = leaf;
+      leaf.setStyle({ fillOpacity:0.8, weight:2.5, color:'#0f2e20' });
+      openFicha(leaf.feature);
+      map.fitBounds(leaf.getBounds(), { padding:[60,60] });
+    }
+  });
+}
+
+document.addEventListener('click', e => { if (!e.target.closest('.search-wrap')) document.getElementById('searchResults').classList.remove('show'); });
+
+// ══════════════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════════════
+let toastTimer;
+function toast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show' + (type ? ' ' + type : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.className = '', 3500);
+}
+
+// ══════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════
+if (ghToken) {
+  fetch('https://api.github.com/user', { headers: { Authorization: `token ${ghToken}` } })
+    .then(r => r.ok ? r.json() : null)
+    .then(user => {
+      if (user?.login === GH_OWNER) {
+        isAdmin = true;
+        document.getElementById('adminBadge').classList.add('show');
+        document.getElementById('loginBtn').style.display = 'none';
+        document.getElementById('btnAdd').disabled = false;
+      } else { sessionStorage.removeItem('bsm_token'); ghToken = null; }
+    });
+}
+
+loadPublicLayers();
+</script>
+</body>
+</html>
