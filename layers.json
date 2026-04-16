@@ -3,6 +3,8 @@
     "nome": "Condominio Arquipelago Do Sol",
     "arquivo": "geojson/condominio_arquipelago_do_sol.geojson",
     "cor": "#5b52c4",
-    "visivel": true
+    "visivel": true,
+    "fillOpacity": 0.45,
+    "weight": 1
   }
 ]
